@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Datasets & downloaded media (large, regenerable via scripts/download_wlasl.py)
+data/wlasl/videos/
+data/wlasl/*.json
+data/keypoints/
+
+# Downloaded model weights (regenerable, fetched automatically on first run)
+models/*.task
+
+# Trained checkpoints (regenerable via src/recognition/train.py)
+checkpoints/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
