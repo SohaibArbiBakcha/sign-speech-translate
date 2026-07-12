@@ -138,3 +138,33 @@ pipeline bug.
 glosses that have been downloaded and trained on. Missing glosses are
 reported and skipped, not silently dropped — surfaced via the `missing`
 return value in `lookup_clips()`/`generate_sign_video()`.
+
+## Same session, continued: scaled up training data, added live demo
+
+**Bigger download**: `python scripts/download_wlasl.py --limit 1000` (no
+gloss filter) — went from 300 clips/27 glosses to **1000 clips / 101
+glosses** (665 train / 174 val / 161 test, 1-17 clips per gloss). Re-ran
+keypoint extraction on the full set (all 1000 succeeded).
+
+**Retrained** (40 epochs, same transformer/hyperparameters): best val
+accuracy **36.8%** on 101 classes. Looks flat against the earlier 37.7% on
+27 classes, but the random baseline dropped from ~3.7% to ~1% — so relative
+to chance the model is now doing meaningfully better on a much harder task.
+Overfitting is still pronounced (train accuracy 95-97%+ by epoch 30-40),
+consistent with still-thin per-class sample counts; more clips per gloss
+remains the biggest lever, followed by augmentation or regularization if
+more data isn't available.
+
+**Live webcam demo added**: `src/pipeline_webcam_demo.py` — captures the
+default camera, runs `HolisticLandmarker` in VIDEO mode continuously (single
+long-lived landmarker for the session, timestamps naturally monotonic since
+there's no clip boundary to reset at), keeps a rolling 96-frame buffer,
+re-runs the classifier every 15 frames, and overlays the current top
+prediction on the window (with an optional `--speak` flag to say new
+high-confidence predictions aloud via the existing TTS wrapper). Refactored
+`src/recognition/infer.py`'s private `_load()` into a public `load_model()`
+so the webcam demo could reuse it cleanly.
+- Not testable from this environment (no interactive display/webcam access
+  in the tool sandbox) — verified only that it imports and parses cleanly.
+  Needs a real run on the user's machine to confirm the live loop works as
+  expected.

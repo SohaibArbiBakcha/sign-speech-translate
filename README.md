@@ -31,12 +31,13 @@ larger paired dataset than is realistically available for this project.
 
 ## Current results
 
-Trained on a 300-clip / 27-gloss subset of [WLASL](https://dxli94.github.io/WLASL/)
-(Word-Level ASL): **37.7% validation accuracy** (random baseline for 27
-classes is ~3.7%). Training accuracy reaches 83%+ by epoch 30, so the model
+Trained on a 1000-clip / 101-gloss subset of [WLASL](https://dxli94.github.io/WLASL/)
+(Word-Level ASL): **36.8% validation accuracy** (random baseline for 101
+classes is ~1%). Training accuracy exceeds 95% by epoch 30+, so the model
 is clearly learning — the gap is overfitting from small per-class sample
-counts (~7 clips/class on average). More data per gloss is the main lever
-to close that gap; see [JOURNAL.md](JOURNAL.md) for the full run-by-run log.
+counts (still only ~1-17 clips/class). More data per gloss remains the main
+lever to close that gap; see [JOURNAL.md](JOURNAL.md) for the full
+run-by-run log, including the earlier 300-clip/27-gloss run this superseded.
 
 ## Project layout
 
@@ -108,6 +109,9 @@ python -m src.pipeline_sign_to_speech path/to/clip.mp4
 # Text -> sign directly (skip ASR), and English -> gloss on their own
 python -m src.generation.generate "Is your mother fine now?" output.mp4
 python -m src.gloss.translate "Is your mother fine now?"
+
+# Live webcam recognition demo (press 'q' to quit)
+python -m src.pipeline_webcam_demo --speak
 ```
 
 Both directions are currently bottlenecked by vocabulary: only glosses with
@@ -123,7 +127,9 @@ without a clip are reported and skipped rather than silently dropped.
 - [x] English → ASL gloss translation (rule-based heuristic via spaCy)
 - [x] Gloss → sign clip lookup + video generation
 - [x] Both directions wired end-to-end (`pipeline_speech_to_sign.py`, `pipeline_sign_to_speech.py`)
-- [ ] Scale up training data (more clips/gloss) to close the train/val gap
+- [x] Scaled up to 1000 clips / 101 glosses (from 300/27) — val accuracy held at ~37% on a ~4x harder classification task
+- [x] Live webcam demo (`pipeline_webcam_demo.py`)
+- [ ] Further scale up training data (more clips/gloss) to close the remaining train/val gap
 - [ ] Continuous (sentence-level) sign recognition (How2Sign)
 - [ ] Real ASL grammar in gloss translation (current version is a simplified heuristic, not linguistically accurate)
 - [ ] Avatar-based generation instead of clip concatenation (smoother transitions)

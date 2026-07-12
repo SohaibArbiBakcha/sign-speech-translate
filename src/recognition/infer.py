@@ -20,7 +20,8 @@ _model = None
 _classes = None
 
 
-def _load():
+def load_model():
+    """Load (and cache) the trained classifier and its class list."""
     global _model, _classes
     if _model is None:
         _classes = json.loads((CHECKPOINT_DIR / "classes.json").read_text(encoding="utf-8"))
@@ -34,7 +35,7 @@ def _load():
 def predict_gloss(video_path: str, top_k: int = 5) -> list[tuple[str, float]]:
     """Run the trained classifier on a clip, return [(gloss, prob), ...]
     sorted by descending probability."""
-    model, classes = _load()
+    model, classes = load_model()
     device = next(model.parameters()).device
 
     with make_landmarker() as landmarker:
