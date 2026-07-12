@@ -168,3 +168,17 @@ so the webcam demo could reuse it cleanly.
   in the tool sandbox) — verified only that it imports and parses cleanly.
   Needs a real run on the user's machine to confirm the live loop works as
   expected.
+
+**Bug found via user testing**: user reported a bad `infer.py` prediction.
+Root cause: `infer.py`'s CLI hardcoded `frame_start=1, frame_end=-1`, but
+132 of the 1000 downloaded WLASL clips are cropped from a much longer
+source video (`frame_start` in the thousands) — feeding the whole file gave
+the classifier mostly irrelevant footage before/after the actual sign. Fixed
+by looking up the real frame span from `data/wlasl/manifest.json` when the
+input path matches a known downloaded clip, falling back to the whole file
+otherwise (assumes externally-supplied clips, e.g. webcam recordings, are
+already trimmed to the sign). Verified on `book/70212.mp4` (real span:
+frames 2150-2249) — now correctly processes only 100 frames instead of the
+full source video. Lesson: any code path consuming a WLASL clip path needs
+the frame-span lookup, not just the training extractor and generation
+lookup — this was the third place the same assumption needed fixing.
