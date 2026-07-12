@@ -16,21 +16,29 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 CHECKPOINT_DIR = ROOT / "checkpoints"
 MAX_FRAMES = 96
 
+_model = None
+_classes = None
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("video", type=str)
-    args = parser.parse_args()
 
-    classes = json.loads((CHECKPOINT_DIR / "classes.json").read_text(encoding="utf-8"))
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def _load():
+    global _model, _classes
+    if _model is None:
+        _classes = json.loads((CHECKPOINT_DIR / "classes.json").read_text(encoding="utf-8"))
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        _model = SignTransformer(FEATURE_DIM, num_classes=len(_classes)).to(device)
+        _model.load_state_dict(torch.load(CHECKPOINT_DIR / "best.pt", map_location=device))
+        _model.eval()
+    return _model, _classes
 
-    model = SignTransformer(FEATURE_DIM, num_classes=len(classes)).to(device)
-    model.load_state_dict(torch.load(CHECKPOINT_DIR / "best.pt", map_location=device))
-    model.eval()
+
+def predict_gloss(video_path: str, top_k: int = 5) -> list[tuple[str, float]]:
+    """Run the trained classifier on a clip, return [(gloss, prob), ...]
+    sorted by descending probability."""
+    model, classes = _load()
+    device = next(model.parameters()).device
 
     with make_landmarker() as landmarker:
-        seq = extract_clip(Path(args.video), frame_start=1, frame_end=-1, landmarker=landmarker)
+        seq = extract_clip(Path(video_path), frame_start=1, frame_end=-1, landmarker=landmarker)
 
     seq = _normalize(seq)
     if seq.shape[0] >= MAX_FRAMES:
@@ -43,11 +51,19 @@ def main():
     with torch.no_grad():
         logits = model(x)
         probs = torch.softmax(logits, dim=-1)[0]
-        top5 = torch.topk(probs, k=min(5, len(classes)))
+        top = torch.topk(probs, k=min(top_k, len(classes)))
+
+    return [(classes[idx], prob.item()) for prob, idx in zip(top.values, top.indices)]
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("video", type=str)
+    args = parser.parse_args()
 
     print("Top predictions:")
-    for prob, idx in zip(top5.values, top5.indices):
-        print(f"  {classes[idx]:<20s} {prob.item():.3f}")
+    for gloss, prob in predict_gloss(args.video):
+        print(f"  {gloss:<20s} {prob:.3f}")
 
 
 if __name__ == "__main__":

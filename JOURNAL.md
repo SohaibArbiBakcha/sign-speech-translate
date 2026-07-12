@@ -87,3 +87,54 @@ try data augmentation on keypoint sequences (time-warping, jitter); consider
 reducing model capacity (fewer transformer layers) given the small dataset;
 eventually test `src/recognition/infer.py` on a fresh clip not in the
 manifest.
+
+**Open-sourced**: git initialized, MIT-licensed, `.gitignore` excludes
+`data/`, `checkpoints/`, `models/*.task`, `.venv/` (all regenerable via the
+scripts). README rewritten for a public audience (architecture table,
+current results, roadmap, dataset credit). Repo:
+https://github.com/SohaibArbiBakcha/sign-speech-translate — pushed to
+`main`.
+
+## Same session, continued: generation direction implemented
+
+**Speech ↔ text wrappers**: `src/speech/asr.py` (Whisper, pretrained,
+`transcribe()`), `src/speech/tts.py` (pyttsx3, offline/SAPI5 on Windows,
+`speak()`/`save_to_file()`). No training, as planned from the start.
+
+**English → ASL gloss**: `src/gloss/translate.py`, rule-based via spaCy
+(`en_core_web_sm`) — drops DET/AUX/PART/PUNCT tokens (articles, copula,
+infinitive "to"), lemmatizes and upper-cases the rest. Explicitly documented
+as a heuristic approximation, not real ASL grammar (word order, classifiers,
+non-manual markers are all unhandled) — good enough to drive clip lookup,
+not a linguistic claim.
+- Dependency snag: `spacy`'s CLI (`spacy download`) needs `click`, which
+  didn't get pulled in as a transitive dependency on this Python 3.14 setup.
+  Added `click` to requirements.txt explicitly.
+
+**Gloss → sign generation**: `src/generation/dictionary.py` builds a
+gloss→clip lookup straight from the already-downloaded WLASL manifest (no
+new data collection); `src/generation/generate.py` concatenates the looked-up
+clips into one output video.
+- **Bug caught in testing**: first version concatenated each clip's *entire*
+  video file. Some WLASL manifest entries reference the whole source
+  YouTube video (frame_start/frame_end just marks where the sign is within
+  it), so a 3-word test sentence produced an 8-minute video. Fixed by
+  cropping each clip to its `[frame_start, frame_end]` span during
+  concatenation, same as `extract_keypoints.py` already did — 3-word test
+  dropped to a correct 7.68s. Lesson: the frame-span cropping needs to
+  happen at *every* point a WLASL clip path is consumed, not just in the
+  keypoint extractor.
+
+**End-to-end pipelines**: `src/pipeline_speech_to_sign.py` (audio → text →
+gloss → video) and `src/pipeline_sign_to_speech.py` (video → gloss →
+speech), the latter via a refactored `src/recognition/infer.py` that now
+exposes `predict_gloss()` as a reusable function instead of only a CLI.
+Tested `pipeline_sign_to_speech` on a real downloaded clip (`all/01912.mp4`)
+with `--no-speak`: predicted "now" (0.396 confidence) — wrong for this
+clip, but expected given the model's current ~38% val accuracy; not a
+pipeline bug.
+
+**Current limitation, by design**: both directions only work for the 27
+glosses that have been downloaded and trained on. Missing glosses are
+reported and skipped, not silently dropped — surfaced via the `missing`
+return value in `lookup_clips()`/`generate_sign_video()`.

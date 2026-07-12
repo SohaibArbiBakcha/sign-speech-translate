@@ -21,8 +21,8 @@ inspectable ML pipeline rather than a demo mapping.
 
 | Direction | Approach | Status |
 |---|---|---|
-| Sign → text/speech | Webcam video → [MediaPipe](https://github.com/google/mediapipe) Holistic landmarks (pose + both hands) → transformer classifier → gloss → text/TTS | **In progress** — training pipeline works end-to-end, see [Results](#current-results) |
-| Speech/text → sign | ASR (Whisper) → text → ASL gloss → lookup in a gloss→clip/avatar dictionary | Planned, not yet implemented |
+| Sign → text/speech | Webcam video → [MediaPipe](https://github.com/google/mediapipe) Holistic landmarks (pose + both hands) → transformer classifier → gloss → TTS | **Working end-to-end** on a 27-word vocabulary, see [Results](#current-results) |
+| Speech/text → sign | ASR (Whisper) → text → ASL gloss (spaCy-based heuristic) → lookup in a gloss→clip dictionary → concatenated video | **Working end-to-end**, limited to the same 27-word vocabulary (only glosses with a downloaded clip can be signed) |
 
 The recognition direction is the one that requires training a model, so it
 came first. Generation is designed as a dictionary lookup rather than a
@@ -47,9 +47,15 @@ src/recognition/
   dataset.py                    PyTorch Dataset over extracted keypoints
   model.py                      transformer encoder classifier
   train.py / infer.py           training loop / single-clip inference
-src/speech/                     ASR (Whisper) + TTS wrappers (planned)
-src/gloss/                      English -> ASL gloss translation (planned)
-src/generation/                 gloss -> sign clip/avatar lookup (planned)
+src/speech/
+  asr.py                         speech -> text (Whisper wrapper)
+  tts.py                         text -> speech (pyttsx3 wrapper)
+src/gloss/translate.py           English -> ASL gloss (spaCy-based heuristic)
+src/generation/
+  dictionary.py                  gloss -> downloaded clip lookup
+  generate.py                    text -> gloss -> concatenated sign video
+src/pipeline_speech_to_sign.py   speech audio -> sign video, end to end
+src/pipeline_sign_to_speech.py   sign video -> spoken gloss, end to end
 data/                           WLASL metadata, videos, extracted keypoints (gitignored)
 checkpoints/                    trained model weights (gitignored)
 JOURNAL.md                      dated log of decisions, experiments, and results
@@ -90,16 +96,37 @@ Notes:
 - MediaPipe's `HolisticLandmarker` model bundle (~a few MB) is downloaded
   automatically to `models/` on first run.
 
+### Run the full pipelines
+
+```bash
+# Speech -> sign
+python -m src.pipeline_speech_to_sign path/to/speech.wav output.mp4
+
+# Sign -> speech
+python -m src.pipeline_sign_to_speech path/to/clip.mp4
+
+# Text -> sign directly (skip ASR), and English -> gloss on their own
+python -m src.generation.generate "Is your mother fine now?" output.mp4
+python -m src.gloss.translate "Is your mother fine now?"
+```
+
+Both directions are currently bottlenecked by vocabulary: only glosses with
+a downloaded WLASL clip and enough training examples work. Gloss tokens
+without a clip are reported and skipped rather than silently dropped.
+
 ## Roadmap
 
 - [x] WLASL download pipeline
 - [x] MediaPipe keypoint extraction
 - [x] Transformer-based isolated sign recognition, trained end-to-end
+- [x] Speech-to-text (Whisper) + text-to-speech wrappers
+- [x] English → ASL gloss translation (rule-based heuristic via spaCy)
+- [x] Gloss → sign clip lookup + video generation
+- [x] Both directions wired end-to-end (`pipeline_speech_to_sign.py`, `pipeline_sign_to_speech.py`)
 - [ ] Scale up training data (more clips/gloss) to close the train/val gap
 - [ ] Continuous (sentence-level) sign recognition (How2Sign)
-- [ ] Speech-to-text (Whisper) + text-to-speech wrappers
-- [ ] English → ASL gloss translation
-- [ ] Gloss → sign clip/avatar generation
+- [ ] Real ASL grammar in gloss translation (current version is a simplified heuristic, not linguistically accurate)
+- [ ] Avatar-based generation instead of clip concatenation (smoother transitions)
 - [ ] Real-time webcam demo tying both directions together
 
 ## Contributing

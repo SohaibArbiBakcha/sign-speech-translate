@@ -6,3 +6,6 @@ tqdm
 yt-dlp
 requests
 openai-whisper
+pyttsx3
+spacy
+click
