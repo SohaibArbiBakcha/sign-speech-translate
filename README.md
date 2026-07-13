@@ -129,9 +129,10 @@ without a clip are reported and skipped rather than silently dropped.
 - [x] Both directions wired end-to-end (`pipeline_speech_to_sign.py`, `pipeline_sign_to_speech.py`)
 - [x] Scaled up to 1000 clips / 101 glosses (from 300/27) — val accuracy held at ~37% on a ~4x harder classification task
 - [x] Live webcam demo (`pipeline_webcam_demo.py`)
+- [x] Time topicalization + negation reordering in gloss translation (still a heuristic, not real grammar)
 - [ ] Further scale up training data (more clips/gloss) to close the remaining train/val gap
 - [ ] Continuous (sentence-level) sign recognition (How2Sign)
-- [ ] Real ASL grammar in gloss translation (current version is a simplified heuristic, not linguistically accurate)
+- [ ] More accurate ASL grammar in gloss translation (classifiers, non-manual markers, verb agreement — all unhandled)
 - [ ] Avatar-based generation instead of clip concatenation (smoother transitions)
 - [ ] Real-time webcam demo tying both directions together
 

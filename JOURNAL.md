@@ -182,3 +182,15 @@ frames 2150-2249) — now correctly processes only 100 frames instead of the
 full source video. Lesson: any code path consuming a WLASL clip path needs
 the frame-span lookup, not just the training extractor and generation
 lookup — this was the third place the same assumption needed fixing.
+
+## Same session, continued: improved gloss translation heuristic
+
+Added two more rules to `src/gloss/translate.py` on top of the existing
+DET/AUX/PART/PUNCT drop: **time topicalization** (time words — now, today,
+year, before, etc. — moved to the front of the gloss sequence, matching
+ASL's convention of stating time context first) and **negation-at-end**
+(not/no/never/n't moved to the end, matching ASL's tendency to negate after
+rather than before). Verified: "Is your mother fine now?" -> "NOW YOUR
+MOTHER FINE", "I will never help you" -> "I HELP YOU NEVER". Still just a
+heuristic — no classifiers, non-manual markers, or verb agreement —
+documented as such in the module docstring.
